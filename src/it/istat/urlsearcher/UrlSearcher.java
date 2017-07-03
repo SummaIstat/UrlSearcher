@@ -21,10 +21,16 @@ import java.util.Properties;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 
+import org.apache.log4j.Appender;
+import org.apache.log4j.ConsoleAppender;
+import org.apache.log4j.Logger;
+import org.apache.log4j.PatternLayout;
+import org.apache.log4j.RollingFileAppender;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+
 
 //*******************************
 //***** Author				*****
@@ -34,16 +40,11 @@ import org.jsoup.select.Elements;
 public class UrlSearcher {
 
     //private static final String URLEncoder = null;
+	static Logger logger = Logger.getLogger(UrlSearcher.class);
 	List<String> firmNamesList = new ArrayList<String>();
     List<String> firmIdsList = new ArrayList<String>();
     
     // program parameters
-    //private static String proxyHost = "proxy.istat.it";
-    //private static String proxyPort = "3128";
-    //private static String firmsNamesFilePath = "/home/summa/workspace/ICTScraper/sandbox/firmNamesTrain.txt";
-    //private static String firmsIdsFilePath = "/home/summa/workspace/ICTScraper/sandbox/firmIdsTrain.txt";
-    //private static String txtFilesFolderPath = "/home/summa/workspace/ICTScraper/sandbox/txtFiles";
-    //private static String seedFileFolderPath = "/home/summa/workspace/ICTScraper/sandbox/jCrawlerSeedFile";
     private static String proxyHost = null;
     private static String proxyPort = null;
     private static String firmsNamesFilePath;
@@ -51,35 +52,27 @@ public class UrlSearcher {
     private static String txtFilesFolderPath;
     private static String seedFileFolderPath;
     private static String seedFileName = "seed";
-
-    
-    // if you are under Windows OS you have to set something like this
-    //private static String firmsNamesFilePath = "C:\\myFolder\\myFileWithTheListOfEnterpriseNames.txt";
-    //private static String firmsIdsFilePath = "C:\\myFolder\\myFileWithTheListOfEnterpriseIds.txt";
-    //private static String txtFilesFolderPath = "C:\\myFolder\\myResultsFolder";
-    
-    // if you are under Linux OS you have to set something like this
-    //private static String firmsNamesFilePath = "/home/myHome/myFolder/myFileWithTheListOfEnterpriseNames.txt";
-    //private static String firmsIdsFilePath = "/home/myHome/myFolder/myFileWithTheListOfEnterpriseIds.txt";
-    //private static String txtFilesFolderPath = "/home/myHome/myFolder/myResultsFolder";
+    private static String logFilePath;
     
     public static void main(String[] args) throws IOException {
-             
+        
+    	UrlSearcher scraper = new UrlSearcher();
+        scraper.configure(args);
+        
         //=====================================================================================================
     	DateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
         Date startDateTime = new Date();
-        System.out.println("Starting datetime = " + dateFormat.format(startDateTime)); //15/12/2014 15:59:48
+        logger.info("******************************************************** \n");
+        logger.info("Starting datetime = " + dateFormat.format(startDateTime)); //15/12/2014 15:59:48
     	//=====================================================================================================
-        
-        UrlSearcher scraper = new UrlSearcher();
-        scraper.configure(args);
+                
         scraper.scrape(firmsNamesFilePath, firmsIdsFilePath, txtFilesFolderPath);
         scraper.generateUrlCrawlerSeedFile();
         
         //=====================================================================================================
       	Date endDateTime = new Date();
-      	System.out.println("Started at = " + dateFormat.format(startDateTime)); //15/12/2014 15:59:48
-      	System.out.println("Ending datetime = " + dateFormat.format(endDateTime)); //15/12/2014 15:59:48
+      	logger.info("Started at = " + dateFormat.format(startDateTime)); //15/12/2014 15:59:48
+      	logger.info("Ending datetime = " + dateFormat.format(endDateTime)); //15/12/2014 15:59:48
       	//=====================================================================================================
     }
     
@@ -91,6 +84,8 @@ public class UrlSearcher {
 				InputStream inputStream = fis;
 				Properties props = new Properties();
 				props.load(inputStream);
+				
+				customizeLog(args[0]);
 				
 				// if you are behind a proxy you have to set the IP address and the port number of the proxy
 				// PROXY_HOST
@@ -110,7 +105,7 @@ public class UrlSearcher {
 				if(props.getProperty("FIRM_NAMES_FILE_PATH") != null){
 					firmsNamesFilePath = props.getProperty("FIRM_NAMES_FILE_PATH");
 				}else{
-					System.out.println("Wrong/No configuration for the parameter FIRM_NAMES_FILE_PATH !");
+					logger.error("Wrong/No configuration for the parameter FIRM_NAMES_FILE_PATH !");
 					System.exit(1);
 				}
 				
@@ -118,7 +113,7 @@ public class UrlSearcher {
 				if(props.getProperty("FIRM_IDS_FILE_PATH") != null){
 					firmsIdsFilePath = props.getProperty("FIRM_IDS_FILE_PATH");
 				}else{
-					System.out.println("Wrong/No configuration for the parameter FIRM_IDS_FILE_PATH !");
+					logger.error("Wrong/No configuration for the parameter FIRM_IDS_FILE_PATH !");
 					System.exit(1);
 				}
 				
@@ -126,11 +121,11 @@ public class UrlSearcher {
 				if(props.getProperty("TXT_FILES_FOLDER_PATH") != null){
 					txtFilesFolderPath = props.getProperty("TXT_FILES_FOLDER_PATH");
 					if (!isAValidDirectory(txtFilesFolderPath)){
-			        	System.out.println("The TXT_FILES_FOLDER_PATH parameter that you set ( " + txtFilesFolderPath + " ) is not valid");
+			        	logger.error("The TXT_FILES_FOLDER_PATH parameter that you set ( " + txtFilesFolderPath + " ) is not valid");
 			        	System.exit(1);
 			        }
 				}else{
-					System.out.println("Wrong/No configuration for the parameter TXT_FILES_FOLDER_PATH !");
+					logger.error("Wrong/No configuration for the parameter TXT_FILES_FOLDER_PATH !");
 					System.exit(1);
 				}
 				
@@ -138,21 +133,29 @@ public class UrlSearcher {
 				if(props.getProperty("SEED_FILE_FOLDER_PATH") != null){
 					seedFileFolderPath = props.getProperty("SEED_FILE_FOLDER_PATH");
 					if (!isAValidDirectory(seedFileFolderPath)){
-			        	System.out.println("The SEED_FILE_FOLDER_PATH parameter that you set ( " + seedFileFolderPath + " ) is not valid");
+						logger.error("The SEED_FILE_FOLDER_PATH parameter that you set ( " + seedFileFolderPath + " ) is not valid");
 			        	System.exit(1);
 			        }
 				}else{
-					System.out.println("Wrong/No configuration for the parameter SEED_FILE_FOLDER_PATH !");
+					logger.error("Wrong/No configuration for the parameter SEED_FILE_FOLDER_PATH !");
+					System.exit(1);
+				}
+				
+				// LOG_FILE_PATH
+				if(props.getProperty("LOG_FILE_PATH") != null){
+					logFilePath = props.getProperty("LOG_FILE_PATH");
+				}else{
+					logger.error("Wrong/missing configuration for the parameter LOG_FILE_PATH !");
 					System.exit(1);
 				}
 				
 			} else {
-				System.out.println("Error opening file " + args[0] + " or non-existent file");
-				System.out.println("==>  program execution terminated <==");
+				logger.error("Error opening file " + args[0] + " or non-existent file");
+				logger.error("==>  program execution terminated <==");
 				System.exit(1);
 			}
 		} else {
-			System.out.println("usage: java -jar UrlSearcher.jar [urlSearcherConf.properties fullpath]");
+			logger.error("usage: java -jar UrlSearcher.jar [urlSearcherConf.properties fullpath]");
 			System.exit(1);
 		}			
 	}
@@ -166,7 +169,7 @@ public class UrlSearcher {
         for(int i=0 ; i < firmNamesList.size() ; i++){ 
             String firmName = firmNamesList.get(i);
             String firmId = firmIdsList.get(i);
-            System.out.println((i+1) + " / " + firmNamesList.size() + " ) " + "I am processing " + firmName + " having ID " + firmId );
+            logger.info((i+1) + " / " + firmNamesList.size() + " ) " + "I am processing " + firmName + " having ID " + firmId );
             String path = resultsFolder.getPath() + File.separator + firmId + ".txt";
             
             try {
@@ -194,8 +197,15 @@ public class UrlSearcher {
                     element = resultLinks.get(j);
                     bw.write(element.text().toString());
                     bw.newLine();
-                    bw.write(URLDecoder.decode(element.attr("href"),"UTF-8")); 
-                    //bw.write(element.attr("href")); // old version
+                    try{
+                    	bw.write(URLDecoder.decode(element.attr("href"),"UTF-8"));
+                    }
+                    catch(IllegalArgumentException iae){
+                    	logger.warn(iae.getMessage());
+                    	logger.warn("the following url will not be decoded : " + element.attr("href"));
+                    	//iae.printStackTrace();
+                    	bw.write(element.attr("href"));
+                    }
                     bw.newLine();
                     bw.newLine();
                 }
@@ -234,9 +244,10 @@ public class UrlSearcher {
                 totalResults.append(inputLine);
             }
             in.close();  
-            //System.out.println(totalResults);
+            //logger.info(totalResults);
             
         } catch (IOException ex) {
+        	logger.error(ex.getMessage());
             System.err.println(ex.getMessage());
         } finally {
             return totalResults;
@@ -266,7 +277,7 @@ public class UrlSearcher {
 		        if (fileEntry.isDirectory()) {
 		            // do nothing
 		        } else {
-		        	System.out.println("Analysis of the file " + fileEntry.getName());
+		        	logger.info("Analysis of the file " + fileEntry.getName());
 		            FileInputStream fis = new FileInputStream(fileEntry);
 					InputStream is = fis;
 					BufferedReader br = new BufferedReader(new InputStreamReader(is));
@@ -291,6 +302,7 @@ public class UrlSearcher {
 		    
 		}catch (Exception e) {
 			e.printStackTrace();
+			logger.error("Error: " + e.getMessage());
 			System.err.println("Error: " + e.getMessage());
 		}
     }
@@ -331,10 +343,42 @@ public class UrlSearcher {
                 fis.close();
         } catch (Exception e) {
                 e.printStackTrace();
+                logger.error("Error: " + e.getMessage());
                 System.err.println("Error: " + e.getMessage());
                 System.exit(1);
         }
         return orderedList;
     }
     
+    private void customizeLog(String fileProperties) throws IOException {
+		
+		FileInputStream fis = new FileInputStream(fileProperties);
+		InputStream inputStream = fis;
+		Properties props = new Properties();
+		props.load(inputStream);
+		
+		if(props.getProperty("LOG_FILE_PATH") != null){
+			
+			logFilePath = props.getProperty("LOG_FILE_PATH");
+			
+			RollingFileAppender rfa = new RollingFileAppender();
+			rfa.setName("FileLogger");
+			rfa.setFile(logFilePath);
+			rfa.setAppend(true);
+			rfa.activateOptions();
+			rfa.setMaxFileSize("20MB");
+			rfa.setMaxBackupIndex(30);
+			rfa.setLayout(new PatternLayout("%d{yyyy-MM-dd HH:mm:ss} %-5p %c{1}:%L - %m%n"));
+
+			Logger.getRootLogger().addAppender(rfa);
+			
+		}else{
+			logger.error("Wrong/missing configuration for the parameter LOG_FILE_PATH !");
+			System.exit(1);
+		}
+			
+		inputStream.close();
+		fis.close();
+		
+	}
 }
