@@ -229,7 +229,7 @@ public class UrlSearcher {
         //int responseCode;
         
         try {
-            searchTerm = searchTerm.replace(' ','+');
+            //searchTerm = searchTerm.replace(' ','+'); // used before the encoding of the searchTerm in UTF-8
             urlObj = new URL("http://www.bing.com/" + "search?q=" + URLEncoder.encode(searchTerm, "UTF-8"));
             connection = (HttpURLConnection) urlObj.openConnection();
             connection.setRequestMethod("GET");
