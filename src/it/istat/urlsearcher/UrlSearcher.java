@@ -186,7 +186,8 @@ public class UrlSearcher {
                 StringBuffer sb = bingSearch(firmName);
                 
                 Document doc = Jsoup.parse(sb.toString());
-                Elements resultLinks = doc.select("li[class=b_algo] h2 a");
+                //Elements resultLinks = doc.select("li[class=b_algo] h2 a");
+		Elements resultLinks = doc.select("li[class=b_algo] div[class=b_caption] div[class=b_attribution] cite");
                 
                 for(int j=0 ; j < resultLinks.size() ; j++){ 
                     bw.newLine();
@@ -197,6 +198,7 @@ public class UrlSearcher {
                     element = resultLinks.get(j);
                     bw.write(element.text().toString());
                     bw.newLine();
+		    /*
                     try{
                     	bw.write(URLDecoder.decode(element.attr("href"),"UTF-8"));
                     }
@@ -206,6 +208,7 @@ public class UrlSearcher {
                     	//iae.printStackTrace();
                     	bw.write(element.attr("href"));
                     }
+		    */
                     bw.newLine();
                     bw.newLine();
                 }
